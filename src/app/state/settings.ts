@@ -25,6 +25,8 @@ type SettingsState = {
   /** Camera tilt limits in degrees from straight down (Prompt §3: 25°–75°, adjustable). */
   tiltRange: { min: number; max: number };
   hpVisibility: HpVisibility;
+  /** Clouds, wind, water, particles, flicker (WCAG 2.2.2: moving content can be paused). */
+  ambientMotion: boolean;
 };
 
 type SettingsActions = {
@@ -38,6 +40,7 @@ type SettingsActions = {
   setGridType: (type: GridSpec['type']) => void;
   setTiltRange: (range: { min: number; max: number }) => void;
   setHpVisibility: (visibility: HpVisibility) => void;
+  setAmbientMotion: (on: boolean) => void;
 };
 
 export const useSettings = create<SettingsState & SettingsActions>()(
@@ -52,6 +55,7 @@ export const useSettings = create<SettingsState & SettingsActions>()(
       grid: { type: 'square', width: 30, depth: 30 },
       tiltRange: { min: 25, max: 75 },
       hpVisibility: 'bar',
+      ambientMotion: true,
 
       setRailSide: (railSide) => set({ railSide }),
       setQualityMode: (qualityMode) => set({ qualityMode }),
@@ -65,6 +69,7 @@ export const useSettings = create<SettingsState & SettingsActions>()(
       setGridType: (type) => set((s) => ({ grid: { ...s.grid, type } })),
       setTiltRange: (tiltRange) => set({ tiltRange }),
       setHpVisibility: (hpVisibility) => set({ hpVisibility }),
+      setAmbientMotion: (ambientMotion) => set({ ambientMotion }),
     }),
     {
       name: 'dioramatable:settings',
@@ -80,6 +85,7 @@ export const useSettings = create<SettingsState & SettingsActions>()(
         grid: s.grid,
         tiltRange: s.tiltRange,
         hpVisibility: s.hpVisibility,
+        ambientMotion: s.ambientMotion,
       }),
     },
   ),

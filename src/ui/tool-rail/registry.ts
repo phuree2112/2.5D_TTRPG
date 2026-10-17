@@ -380,7 +380,6 @@ export const TOOLS: ToolDef[] = [
     roles: 'all',
     summary: 'Time of day, weather and mood.',
     keywords: ['weather', 'time', 'lighting'],
-    arrivesIn: 4,
   }),
   tool({
     id: 'quality',

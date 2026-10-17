@@ -1,31 +1,80 @@
 import { useEffect, useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
-import { Object3D } from 'three';
+import { Color } from 'three';
 import { cellCenter, gridExtent, gridLineSegments } from '../core/grid';
+import type { GridSpec } from '../core/grid';
+import type { SceneLight } from '../core/lights';
+import { QUALITY_PRESETS } from '../core/quality';
 import { grassTexture, rng, stoneTexture, woodTexture } from '../core/sprite-art';
 import type { SpriteKind } from '../core/sprite-art';
+import { LightPool } from '../lighting/LightPool';
+import { useLitMaterial } from '../lighting/useLitMaterial';
 import { SpriteBatch } from '../sprites/SpriteBatch';
 import type { SpriteItem } from '../sprites/SpriteBatch';
 import { createTileTexture } from '../sprites/textures';
-import type { GridSpec } from '../core/grid';
-import { QUALITY_PRESETS } from '../core/quality';
-import { useSettings } from '../../app/state/settings';
 import { useSession } from '../../app/state/session';
+import { useSettings } from '../../app/state/settings';
+import { Atmosphere } from './Atmosphere';
+import { AmbientParticles, Weather } from './Particles';
+import { Pond } from './Water';
+import { useMood } from './useMood';
 
-// Demo diorama: a pixel-grass board on a table, with nature sprites, stone pillars and crates.
-// Terrain painting and props from the library arrive in Phase 5.
+// Demo diorama: a raised pixel-grass board in open country, with nature and torch sprites,
+// stone pillars, crates and a pond. Terrain painting and the prop library arrive in Phase 5.
 
 const BOARD_THICKNESS = 0.4;
-const SUN_ELEVATION = (50 * Math.PI) / 180;
-// Back-left of the default camera, so shadows fall toward the viewer (classic diorama light).
-const SUN_AZIMUTH = (-110 * Math.PI) / 180;
+const POND = { col: 5.5, row: 6.5, radius: 2 };
+
+type Place = { col: number; row: number };
+
+function layout(grid: GridSpec) {
+  const at = ({ col, row }: Place) =>
+    cellCenter(grid, { col: Math.round(col), row: Math.round(row) });
+  const last = { col: grid.width - 2, row: grid.depth - 2 };
+  const mid = { col: Math.floor(grid.width / 2), row: Math.floor(grid.depth / 2) };
+  const pillars = [
+    { col: 1, row: 1 },
+    { col: last.col, row: 1 },
+    { col: 1, row: last.row },
+    { col: last.col, row: last.row },
+  ].map(at);
+  const center = at(mid);
+  // Torches stand beside each pillar, toward the middle of the board.
+  const torches = pillars.map((p) => {
+    const dx = Math.sign(center.x - p.x);
+    const dz = Math.sign(center.z - p.z);
+    return { x: p.x + dx * 0.75, z: p.z + dz * 0.75 };
+  });
+  const crates = [
+    { col: last.col - 4, row: last.row - 6 },
+    { col: last.col - 3, row: last.row - 6 },
+    { col: last.col - 4, row: last.row - 5 },
+  ].map(at);
+  const lantern = at({ col: last.col - 5, row: last.row - 7 });
+  const magic = at({ col: 4, row: 14 });
+  const pond = { x: POND.col, z: POND.row * (grid.type === 'hex' ? 0.866 : 1) };
+
+  const lights: SceneLight[] = [
+    { id: 'campfire', preset: 'campfire', x: center.x, y: 0.45, z: center.z },
+    ...torches.map((t, i) => ({
+      id: `torch-${i}`,
+      preset: 'torch' as const,
+      x: t.x,
+      y: 1.0,
+      z: t.z,
+    })),
+    { id: 'lantern', preset: 'lantern', x: lantern.x, y: 0.95, z: lantern.z },
+    { id: 'magic', preset: 'magic', x: magic.x, y: 1.3, z: magic.z },
+  ];
+  return { pillars, torches, crates, lantern, center, pond, lights };
+}
 
 export function DemoTable() {
   const grid = useSettings((s) => s.grid);
   const shadowMapSize = useSession((s) => QUALITY_PRESETS[s.preset].shadowMapSize);
   const extent = gridExtent(grid);
-  const cx = extent.width / 2;
-  const cz = extent.depth / 2;
+  const center = { x: extent.width / 2, z: extent.depth / 2 };
+  const scene = useMemo(() => layout(grid), [grid]);
 
   // Shadow maps render only when something that casts shadows changes (Engineering.md §7.4).
   const get = useThree((s) => s.get);
@@ -35,76 +84,48 @@ export function DemoTable() {
     invalidate();
   }, [get, grid, shadowMapSize]);
 
+  const soil = useLitMaterial({ color: '#4a3a28' });
+
   return (
     <>
-      <Lights
-        cx={cx}
-        cz={cz}
-        reach={Math.max(extent.width, extent.depth)}
-        shadowMapSize={shadowMapSize}
-      />
-
-      {/* Table top */}
-      <mesh rotation-x={-Math.PI / 2} position={[cx, -BOARD_THICKNESS, cz]} receiveShadow>
-        <planeGeometry args={[extent.width + 40, extent.depth + 40]} />
-        <meshLambertMaterial color="#2a2420" />
-      </mesh>
+      <Atmosphere center={center} reach={Math.max(extent.width, extent.depth)} />
+      <LightPool lights={scene.lights} />
+      <Countryside x={center.x} z={center.z} />
 
       {/* Board: soil sides, pixel grass on top */}
-      <mesh position={[cx, -BOARD_THICKNESS / 2 - 0.001, cz]} receiveShadow castShadow>
+      <mesh
+        position={[center.x, -BOARD_THICKNESS / 2 - 0.001, center.z]}
+        material={soil}
+        receiveShadow
+        castShadow
+      >
         <boxGeometry args={[extent.width + 0.6, BOARD_THICKNESS, extent.depth + 0.6]} />
-        <meshLambertMaterial color="#4a3a28" />
       </mesh>
-      <Grass width={extent.width + 0.6} depth={extent.depth + 0.6} x={cx} z={cz} />
+      <Grass width={extent.width + 0.6} depth={extent.depth + 0.6} x={center.x} z={center.z} />
 
       <GridLines grid={grid} />
-      <Landmarks grid={grid} />
+      <Pond x={scene.pond.x} z={scene.pond.z} radius={POND.radius} />
+      <Landmarks grid={grid} scene={scene} />
+      <AmbientParticles extent={extent} campfire={scene.center} />
+      <Weather />
     </>
   );
 }
 
-function Lights({
-  cx,
-  cz,
-  reach,
-  shadowMapSize,
-}: {
-  cx: number;
-  cz: number;
-  reach: number;
-  shadowMapSize: number;
-}) {
-  const target = useMemo(() => new Object3D(), []);
-  const distance = reach * 1.2;
-  const position: [number, number, number] = [
-    cx + Math.cos(SUN_ELEVATION) * Math.sin(SUN_AZIMUTH) * distance,
-    Math.sin(SUN_ELEVATION) * distance,
-    cz + Math.cos(SUN_ELEVATION) * Math.cos(SUN_AZIMUTH) * distance,
-  ];
-  const half = reach / 2 + 2;
-
+/** Open land around the board, so the diorama sits in a world that fades into fog. */
+function Countryside({ x, z }: { x: number; z: number }) {
+  const texture = useMemo(() => createTileTexture(grassTexture(), 40, 40), []);
+  useEffect(() => () => texture.dispose(), [texture]);
+  const material = useLitMaterial({ color: '#8c9a78', map: texture });
   return (
-    <>
-      <hemisphereLight args={['#9cc7e8', '#6b5a3e', 1.4]} />
-      <primitive object={target} position={[cx, 0, cz]} />
-      {/* Remount when the shadow map size changes: three.js allocates a shadow map only once. */}
-      <directionalLight
-        key={shadowMapSize}
-        color="#ffe2b0"
-        intensity={2.6}
-        position={position}
-        target={target}
-        castShadow={shadowMapSize > 0}
-        shadow-mapSize={[shadowMapSize || 512, shadowMapSize || 512]}
-        shadow-camera-left={-half}
-        shadow-camera-right={half}
-        shadow-camera-top={half}
-        shadow-camera-bottom={-half}
-        shadow-camera-near={1}
-        shadow-camera-far={distance * 2}
-        shadow-normalBias={0.03}
-      />
-    </>
+    <mesh
+      rotation-x={-Math.PI / 2}
+      position={[x, -BOARD_THICKNESS, z]}
+      material={material}
+      receiveShadow
+    >
+      <circleGeometry args={[150, 64]} />
+    </mesh>
   );
 }
 
@@ -115,15 +136,24 @@ function Grass({ width, depth, x, z }: { width: number; depth: number; x: number
     [width, depth],
   );
   useEffect(() => () => texture.dispose(), [texture]);
+  const material = useLitMaterial({ map: texture });
   return (
-    <mesh rotation-x={-Math.PI / 2} position={[x, 0, z]} receiveShadow>
+    <mesh rotation-x={-Math.PI / 2} position={[x, 0, z]} material={material} receiveShadow>
       <planeGeometry args={[width, depth]} />
-      <meshLambertMaterial map={texture} />
     </mesh>
   );
 }
 
+const GRID_COLOR = new Color('#eee8dc');
+
 function GridLines({ grid }: { grid: GridSpec }) {
+  // The lines are unlit, so they would glow at night: scale them with the mood's light.
+  const mood = useMood();
+  const level = Math.min(
+    1,
+    Math.max(0.3, (mood.key.intensity / 2.8) * 0.7 + (mood.hemi.intensity / 1.4) * 0.3),
+  );
+  const color = useMemo(() => GRID_COLOR.clone().multiplyScalar(level), [level]);
   const positions = useMemo(() => {
     const segments = gridLineSegments(grid);
     const xyz = new Float32Array((segments.length / 2) * 3);
@@ -140,14 +170,14 @@ function GridLines({ grid }: { grid: GridSpec }) {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <lineBasicMaterial color="#eee8dc" transparent opacity={0.13} depthWrite={false} />
+      <lineBasicMaterial color={color} transparent opacity={0.13} depthWrite={false} />
     </lineSegments>
   );
 }
 
-// Nature and campfire as camera-facing pixel sprites; stone and wood stay 3D with pixel
-// textures. That mix is what reads as HD-2D (Visual.md §2.1).
-function Landmarks({ grid }: { grid: GridSpec }) {
+// Nature, torches and the campfire as camera-facing pixel sprites; stone and wood stay 3D with
+// pixel textures. That mix is what reads as HD-2D (Visual.md §2.1).
+function Landmarks({ grid, scene }: { grid: GridSpec; scene: ReturnType<typeof layout> }) {
   const textures = useMemo(
     () => ({
       stone: createTileTexture(stoneTexture(), 1, 2),
@@ -156,49 +186,48 @@ function Landmarks({ grid }: { grid: GridSpec }) {
     [],
   );
   useEffect(() => () => Object.values(textures).forEach((t) => t.dispose()), [textures]);
+  const stone = useLitMaterial({ map: textures.stone });
+  const wood = useLitMaterial({ map: textures.wood });
 
-  const at = (col: number, row: number) => {
-    const c = cellCenter(grid, { col, row });
-    return [c.x, 0, c.z] as const;
-  };
-  const last = { col: grid.width - 2, row: grid.depth - 2 };
-  const mid = { col: Math.floor(grid.width / 2), row: Math.floor(grid.depth / 2) };
-  const corners = [at(1, 1), at(last.col, 1), at(1, last.row), at(last.col, last.row)];
-  const sprites = useMemo(() => natureSprites(grid), [grid]);
+  const sprites = useMemo(
+    () => [
+      ...natureSprites(grid, scene.pond),
+      { kind: 'campfire' as const, ...scene.center },
+      ...scene.torches.map((t) => ({ kind: 'torch' as const, ...t })),
+      { kind: 'torch' as const, ...scene.lantern },
+    ],
+    [grid, scene],
+  );
 
   return (
     <group>
-      {corners.map(([x, , z], i) => (
-        <mesh key={i} position={[x, 0.8, z]} castShadow receiveShadow>
+      {scene.pillars.map((p, i) => (
+        <mesh key={i} position={[p.x, 0.8, p.z]} material={stone} castShadow receiveShadow>
           <boxGeometry args={[0.7, 1.6, 0.7]} />
-          <meshLambertMaterial map={textures.stone} />
         </mesh>
       ))}
-      {[
-        [last.col - 4, last.row - 6],
-        [last.col - 3, last.row - 6],
-        [last.col - 4, last.row - 5],
-      ].map(([col, row]) => {
-        const [x, , z] = at(col!, row!);
-        return (
-          <mesh key={`${col}-${row}`} position={[x, 0.3, z]} castShadow receiveShadow>
-            <boxGeometry args={[0.6, 0.6, 0.6]} />
-            <meshLambertMaterial map={textures.wood} />
-          </mesh>
-        );
-      })}
-      <SpriteBatch items={[...sprites, { kind: 'campfire', ...xz(at(mid.col, mid.row)) }]} />
+      {scene.crates.map((c) => (
+        <mesh
+          key={`${c.x}-${c.z}`}
+          position={[c.x, 0.3, c.z]}
+          material={wood}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[0.6, 0.6, 0.6]} />
+        </mesh>
+      ))}
+      <SpriteBatch items={sprites} />
     </group>
   );
 }
 
-const xz = ([x, , z]: readonly [number, number, number]) => ({ x, z });
-
-/** Trees and bushes around the edge of the board, clear of the tokens in the middle. */
-function natureSprites(grid: GridSpec): SpriteItem[] {
+/** Trees and bushes around the edge of the board, clear of the tokens and the pond. */
+function natureSprites(grid: GridSpec, pond: { x: number; z: number }): SpriteItem[] {
   const random = rng(42);
   const items: SpriteItem[] = [];
   const kinds: SpriteKind[] = ['pine', 'pine', 'oak', 'oak', 'autumn'];
+  const clear = (x: number, z: number) => Math.hypot(x - pond.x, z - pond.z) > POND.radius + 0.8;
   for (let row = 0; row < grid.depth; row++) {
     for (let col = 0; col < grid.width; col++) {
       const edge = Math.min(col, row, grid.width - 1 - col, grid.depth - 1 - row);
@@ -207,10 +236,11 @@ function natureSprites(grid: GridSpec): SpriteItem[] {
       const c = cellCenter(grid, { col, row });
       const jitter = () => (random() - 0.5) * 0.5;
       const kind = random() < 0.25 ? 'bush' : kinds[Math.floor(random() * kinds.length)]!;
-      items.push({ kind, x: c.x + jitter(), z: c.z + jitter(), scale: 0.85 + random() * 0.35 });
+      const item = { kind, x: c.x + jitter(), z: c.z + jitter(), scale: 0.85 + random() * 0.35 };
+      if (clear(item.x, item.z)) items.push(item);
     }
   }
-  // A grove of autumn trees and a few bushes inside the map for depth.
+  // A grove of autumn trees and a few pines inside the map for depth.
   for (const [col, row] of [
     [4, 22],
     [5, 24],
@@ -220,6 +250,16 @@ function natureSprites(grid: GridSpec): SpriteItem[] {
   ] as const) {
     const c = cellCenter(grid, { col, row });
     items.push({ kind: row > 20 ? 'autumn' : 'pine', x: c.x, z: c.z, scale: 1.1 });
+  }
+  // Reeds by the pond.
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.4;
+    items.push({
+      kind: 'bush',
+      x: pond.x + Math.cos(a) * (POND.radius + 0.35),
+      z: pond.z + Math.sin(a) * (POND.radius + 0.35),
+      scale: 0.6,
+    });
   }
   return items;
 }

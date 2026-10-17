@@ -16,6 +16,7 @@ import { SettingsPanel } from './SettingsPanel';
 import { SelectPanel } from './SelectPanel';
 import { TokenLibraryPanel } from './TokenLibraryPanel';
 import { ImportTokenPanel } from './ImportTokenPanel';
+import { EnvironmentPanel } from './EnvironmentPanel';
 
 const BUILT: Record<string, () => ReactNode> = {
   camera: () => <CameraPanel />,
@@ -25,6 +26,7 @@ const BUILT: Record<string, () => ReactNode> = {
   move: () => <SelectPanel tool="move" />,
   'token-library': () => <TokenLibraryPanel />,
   'import-token': () => <ImportTokenPanel />,
+  environment: () => <EnvironmentPanel />,
 };
 
 /** Shows the open tool's options: a flyout beside the rail, or a sheet on phones. */

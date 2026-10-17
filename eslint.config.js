@@ -44,8 +44,19 @@ export default tseslint.config(
     },
   },
   {
+    files: ['src/**/*.{ts,tsx}'],
+    extends: [reactHooks.configs.flat['recommended-latest']],
+  },
+  {
     files: ['src/**/*.tsx'],
-    extends: [reactHooks.configs.flat['recommended-latest'], reactRefresh.configs.vite],
+    extends: [reactRefresh.configs.vite],
+  },
+  {
+    // three.js objects are mutable by design: R3F updates materials, lights and fog in effects
+    // and useFrame. The React Compiler immutability rule assumes compiled components, which this
+    // project does not use.
+    files: ['src/scene/**/*.{ts,tsx}', 'src/tokens/render/**/*.{ts,tsx}'],
+    rules: { 'react-hooks/immutability': 'off' },
   },
   {
     files: [

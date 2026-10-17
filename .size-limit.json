@@ -10,5 +10,11 @@
     "path": "dist/assets/SceneCanvas-*.js",
     "limit": "300 kB",
     "gzip": true
+  },
+  {
+    "name": "Post-processing chunk (lazy, Medium/High only)",
+    "path": "dist/assets/PostFX-*.js",
+    "limit": "60 kB",
+    "gzip": true
   }
 ]

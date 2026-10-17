@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
+import { AgXToneMapping } from 'three';
 import { Canvas } from '@react-three/fiber';
 import { PauseWhenHidden, publishDiagnostics, SceneDiagnostics } from './diagnostics';
 import { QUALITY_PRESETS } from './core/quality';
@@ -9,6 +10,11 @@ import { QualityGovernor } from './quality/QualityGovernor';
 import { TokenLayer } from '../tokens/render/TokenLayer';
 import { DragHighlight } from '../tokens/render/DragHighlight';
 import { TokenInteraction } from '../tokens/interaction/TokenInteraction';
+import { AmbientTicker } from './environment/AmbientTicker';
+import { FinalRender } from './overlay';
+
+// Post-processing is its own chunk: Low quality never downloads it (Engineering.md §17).
+const PostFX = lazy(() => import('./postfx/PostFX'));
 
 // Demand rendering from the start (Engineering.md §5.2).
 export default function SceneCanvas() {
@@ -24,6 +30,8 @@ export default function SceneCanvas() {
       gl={{ antialias, powerPreference: 'high-performance' }}
       onCreated={({ gl }) => {
         gl.shadowMap.autoUpdate = false;
+        // Tone mapping without the composer (Low). The composer takes over on Medium/High.
+        gl.toneMapping = AgXToneMapping;
         publishDiagnostics(gl);
       }}
       aria-label="Game table"
@@ -38,6 +46,13 @@ export default function SceneCanvas() {
       <DragHighlight />
       <TokenInteraction />
       <CameraRig />
+      <AmbientTicker />
+      <FinalRender />
+      {QUALITY_PRESETS[preset].postProcessing && (
+        <Suspense fallback={null}>
+          <PostFX />
+        </Suspense>
+      )}
     </Canvas>
   );
 }

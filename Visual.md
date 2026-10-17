@@ -65,7 +65,7 @@ Pixel scale rule: at the default zoom on a phone, one token pixel should cover 2
 |---|---|---|
 | Field of view | 30° | 25–35° |
 | Camera polar angle | 55° from vertical | 25–75° |
-| Tilt-shift sharp band | 45 % of screen height, centred 5 % below middle | Follows the camera focus |
+| Tilt-shift sharp band | 45 % of screen height, centred 5 % below middle, then a 15 % feather each side | Follows the camera focus. Name labels and HP bars are never blurred (drawn after post-processing) |
 | Vignette | darkness 0.35 | per mood (§4.1) |
 
 ### 2.4 World palette
@@ -202,6 +202,18 @@ Starting values. They are tuned on device in Phase 4. Intensities are relative t
 | **Night** | `#8FA8FF` (moon) / 0.6 / 40° | `#1B2A4A` / `#0E0F14` / 0.25 | `#121A2E` / 0.025 | Cool −12, saturation 0.85, contrast 1.15, split-tone: warm highlights keep torches orange | 1.0 | 0.45 |
 | **Dungeon** | none | `#2A2622` / `#0A0908` / 0.15 | `#0E0B09` / 0.040 | Warm +5, saturation 0.90, contrast 1.20 | 0.9 | 0.50 |
 | **Cold** | `#DDEBFF` / 2.4 / 30° | `#BFD6EA` / `#8C9AA8` / 0.7 | `#DCE6EE` / 0.020 | Cool −10, saturation 0.80, contrast 0.95, lifted blacks `#1C2A38` | 0.3 | 0.20 |
+
+**Tuned values (Phase 4, real GPU review at 16:00, 19:00 and 23:00).** These are what `scene/core/atmosphere.ts` ships. Hemisphere intensities are higher than the starting values because three.js applies Lambert's 1/π to them. Night and Dungeon fill light was raised so that tokens far from any light stay readable, which a tabletop needs more than a game does.
+
+| Mood | Key light | Hemisphere sky / ground / intensity | Fog colour / density |
+|---|---|---|---|
+| **Warm Day** | `#FFE2B0` / 2.8 / 50° | `#9CC7E8` / `#6B5A3E` / 1.4 | `#CFE0E8` / 0.008 |
+| **Dusk** | `#FF9A5A` / 1.9 / 12° | `#6E6FA8` / `#3B2A2E` / 1.0 | `#A57585` / 0.010 |
+| **Night** | `#8FA8FF` / 0.8 / 40° | `#2A3D66` / `#14161E` / 1.1 | `#121A2E` / 0.018 |
+| **Dungeon** | none | `#3A332C` / `#0E0C0A` / 0.7 | `#0E0B09` / 0.028 |
+| **Cold** | `#DDEBFF` / 2.3 / 30° | `#BFD6EA` / `#8C9AA8` / 1.5 | `#DCE6EE` / 0.016 |
+
+Grades, bloom and vignette are as in the starting table. Contrast is a power S-curve around mid-grey, not a straight line, so night shadows keep detail. Temperature is a channel gain, so black stays black. Token faces add 5 % of their own colour as light (a legibility floor). Time-of-day keyframes: 00–05 Night, 07 Dusk, 09–17 Warm Day, 20 Dusk, 22–24 Night, blended between.
 
 **Time of day** (the Day/Night slider) blends moods: 05–08 Dusk → Warm Day, 08–17 Warm Day, 17–20 Warm Day → Dusk, 20–05 Night. An indoor level can override its mood (cellars default to Dungeon).
 

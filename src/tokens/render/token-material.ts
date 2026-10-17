@@ -1,5 +1,7 @@
-import { MeshLambertMaterial } from 'three';
+import { MeshDepthMaterial, MeshLambertMaterial, RGBADepthPacking } from 'three';
 import type { DataArrayTexture, IUniform } from 'three';
+import { withLightPool } from '../../scene/lighting/light-pool';
+import { shadowUniforms } from '../../scene/sprites/billboard-material';
 
 // One Lambert material draws every token face and ring base (Engineering.md §7.3, Visual.md §3):
 //   aMode 0 Flat     lies on the floor; the image's top points away from the camera
@@ -140,8 +142,77 @@ export function createTokenMaterial(source: TokenTextureSource): MeshLambertMate
       .replace('#include <begin_vertex>', BEGIN_VERTEX);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n${COMMON_FRAGMENT}`)
-      .replace('#include <map_fragment>', MAP_FRAGMENT);
+      .replace('#include <map_fragment>', MAP_FRAGMENT)
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+// Legibility floor: a token far from any light at night is still readable (Visual.md §4.1).
+totalEmissiveRadiance += diffuseColor.rgb * 0.05;`,
+      );
   };
-  material.customProgramCacheKey = () => 'token-face-v1';
+  material.customProgramCacheKey = () => 'token-face-v2';
+  return withLightPool(material);
+}
+
+/**
+ * Depth material for token shadow proxies: Standee and Pop-out tokens turned toward the key
+ * light, so the shadow keeps the token's silhouette from any camera angle (Prompt §5.2).
+ * Flat tokens and ring bases lie on the floor and cast nothing.
+ */
+export function createTokenDepthMaterial(source: TokenTextureSource): MeshDepthMaterial {
+  const material = new MeshDepthMaterial({ depthPacking: RGBADepthPacking });
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uTokens = {
+      get value() {
+        return source.texture;
+      },
+    };
+    shader.uniforms.uLightDir = shadowUniforms.uLightDir;
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+attribute float aLayer;
+attribute float aMode;
+uniform vec3 uLightDir;
+varying vec2 vLocal;
+varying float vLayer;
+varying float vMode;`,
+      )
+      .replace(
+        '#include <begin_vertex>',
+        `vec2 tkLocal = position.xy + vec2(0.5, 0.0);
+bool tkPop = aMode > 1.5 && aMode < 2.5;
+tkLocal.y = min(tkLocal.y, tkPop ? 1.45 : 1.1);
+float tkScale = length(instanceMatrix[0].xyz);
+float tkLightYaw = atan(uLightDir.x, uLightDir.z);
+vec3 tkRight = vec3(cos(tkLightYaw), 0.0, -sin(tkLightYaw));
+vec3 transformed = tkRight * (tkLocal.x - 0.5) + vec3(0.0, tkLocal.y + 0.06 / tkScale, 0.0);
+if (aMode < 0.5 || aMode > 2.5) transformed = vec3(0.0);
+vLocal = tkLocal;
+vLayer = aLayer;
+vMode = aMode;`,
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+uniform highp sampler2DArray uTokens;
+varying vec2 vLocal;
+varying float vLayer;
+varying float vMode;`,
+      )
+      .replace(
+        'void main() {',
+        `void main() {
+  float tkR = length(vLocal - vec2(0.5)) * 2.0;
+  bool tkPop = vMode > 1.5 && vMode < 2.5;
+  vec2 tkUv = tkPop ? (vLocal + vec2(0.125, 0.0)) / 1.25 : vLocal;
+  float tkAlpha = (tkUv.x >= 0.0 && tkUv.x <= 1.0 && tkUv.y >= 0.0 && tkUv.y <= 1.0)
+    ? texture(uTokens, vec3(tkUv, vLayer)).a : 0.0;
+  if (!(tkR <= 1.0 || (tkPop && vLocal.y > 0.5 && tkAlpha > 0.5))) discard;`,
+      );
+  };
+  material.customProgramCacheKey = () => 'token-depth-v1';
   return material;
 }

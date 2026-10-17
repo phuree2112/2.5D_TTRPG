@@ -324,7 +324,7 @@ Each display mode is one `InstancedMesh` group per level batch. Per-instance att
 **Labels and HP bars** (Prompt §4.3, no per-token HTML):
 - Name and level badge ("F2") are drawn with Canvas 2D into a second texture array (256 × 64 per token). Canvas 2D uses the browser's text shaper, which handles Thai stacked vowels and tone marks correctly; SDF text libraries do not reliably position Thai marks.
 - HP bars are an instanced quad with `aHp` driving fill in the fragment shader. Display depends on the room's HP visibility setting (numbers / bar / word / hidden). Words are drawn in the label layer.
-- Labels and bars are spherical billboards with constant screen size (scale by view distance, clamped), drawn after tokens with `depthTest` on and a small depth offset.
+- Labels and bars are spherical billboards with constant screen size (scale by view distance, clamped). [Δ Phase 4] They live in an overlay scene drawn after post-processing (`scene/overlay-scene.ts`, `FinalRender` at frame priority 2) with `depthTest` off: tilt-shift, AgX and the grade would otherwise blur and grey the exact UI colours of Visual.md §3.5, and a tabletop needs names on top of scenery.
 
 **Hidden tokens:** a player client never receives them (§11.4, §12). The GM client draws them at 50 % dither with an eye-slash badge.
 
@@ -346,12 +346,14 @@ Key-light shadow settings per preset are in §7.7. The shadow camera frustum is 
 
 | Effect | Settings | Low | Medium | High |
 |---|---|---|---|---|
-| Composer | `multisampling` | off (no composer) | 0 | 4 on desktop, 0 on mobile |
-| Bloom | `mipmapBlur`, `luminanceThreshold` 0.9, `resolutionScale` 0.5 | off | on | on |
-| Tilt-shift | `TiltShiftEffect` `focusArea` 0.45, `feather` 0.25, `resolutionScale` 0.5, kernel small/medium | off | on (small kernel) | on (medium kernel) |
+| Composer | `multisampling` | off (no composer) | 0 | 0 [Δ Phase 4: pixel art needs no MSAA; revisit if 3D edges shimmer on desktop] |
+| Bloom | `mipmapBlur`, `luminanceThreshold` 1.6 [Δ: sunlit ground is above 1.0 in HDR; 0.9 bloomed the whole table], smoothing 0.4, `resolutionScale` 0.5 | off | on | on |
+| Tilt-shift | `LinearTiltShiftEffect` (below), `focusArea` 0.75, `feather` 0.3, `offset` −0.1, `resolutionScale` 0.5, kernel small/medium | off | on (small kernel) | on (medium kernel) |
 | Tone mapping | AgX | renderer AgX | effect | effect |
 | LUT | `LUT3DEffect`, 32³ LUT per mood (Warm Day, Dusk, Night, Dungeon, Cold) | off | on | on |
 | Vignette | darkness 0.35 | off | on | on |
+
+**Tilt-shift fixes** [Δ Phase 4, postprocessing 6.39.5]: `TiltShiftEffect.initialize` tags its blur target sRGB whenever the canvas outputs sRGB, without the frame-buffer-type check that `KawaseBlurPass` has. With HalfFloat buffers the blur is sRGB-encoded and read back as linear, which lifted every channel by about 35/255. `scene/postfx/linear-tilt-shift.ts` keeps float targets linear and replaces the effect's hard `step` at the band edge with a short ramp, because the switch from full to half resolution showed as a seam across pixel art. `focusArea` is a half-width in units where 2 = screen height, so 0.75 − 0.3 feather = 0.45 gives Visual.md's 45 % sharp band.
 
 LUTs are built at load time from code-defined grade parameters with `LookupTexture` (lift/gamma/gain, saturation, temperature), cached as `Data3DTexture`. They are not shipped as `.cube` files, which saves bytes and keeps them tweakable. The grades are defined in `Visual.md` §4.1.
 

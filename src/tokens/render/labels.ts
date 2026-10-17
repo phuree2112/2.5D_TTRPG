@@ -169,6 +169,7 @@ export function createLabelMaterial(source: {
       }
     `,
     transparent: true,
+    depthTest: false, // drawn after post-processing, on top (scene/overlay-scene.ts)
     depthWrite: false,
     toneMapped: false,
   });

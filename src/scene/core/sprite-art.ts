@@ -212,15 +212,46 @@ export function campfire(): PixelImage {
   );
 }
 
+export function torch(): PixelImage {
+  const pole = Array.from({ length: 14 }, (_, i) => (i % 5 === 0 ? '..gbbg..' : '...bb...'));
+  return fromRows(
+    [
+      '...y....',
+      '..yoy...',
+      '..yooy..',
+      '.yorroy.',
+      '.yorRro.',
+      '.yoRRro.',
+      '..orro..',
+      '..oRRo..',
+      '.gGGGGg.',
+      '..gBBg..',
+      ...pole,
+      '..gggg..',
+    ],
+    {
+      y: hex('#ffe9a3'),
+      o: hex('#ffb34d'),
+      r: hex('#ff7a2e'),
+      R: hex('#e0442a'),
+      b: hex('#6b4423'),
+      B: hex('#3b2a20'),
+      g: hex('#5a5a54'),
+      G: hex('#3a3a36'),
+    },
+  );
+}
+
 /** Sprite layers in texture-array order. */
 export const SPRITES = {
   knight: { layer: 0, draw: knight },
   ranger: { layer: 1, draw: ranger },
-  pine: { layer: 2, draw: pineTree },
-  oak: { layer: 3, draw: oakTree },
-  autumn: { layer: 4, draw: autumnTree },
-  bush: { layer: 5, draw: bush },
+  pine: { layer: 2, draw: pineTree, sway: true },
+  oak: { layer: 3, draw: oakTree, sway: true },
+  autumn: { layer: 4, draw: autumnTree, sway: true },
+  bush: { layer: 5, draw: bush, sway: true },
   campfire: { layer: 6, draw: campfire, emissive: true },
+  torch: { layer: 7, draw: torch, emissive: true },
 } as const;
 
 export type SpriteKind = keyof typeof SPRITES;

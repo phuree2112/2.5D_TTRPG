@@ -21,7 +21,8 @@ export function DebugOverlay() {
         `Draw calls ${d.lastFrame.calls}  Triangles ${d.lastFrame.triangles.toLocaleString()}`,
         `Preset ${d.preset}  DPR ${d.dpr.toFixed(2)}`,
         `Camera ${d.camera.mode}  azimuth ${deg(d.camera.azimuth)}°  polar ${deg(d.camera.polar)}°`,
-        `Real lights 0  Visible levels 1`,
+        `Real lights ${d.lights?.real ?? 0}  Fake lights ${d.lights?.fake ?? 0}  Visible levels 1`,
+        `Post-processing ${d.postfx ? 'on' : 'off'}`,
       ]);
     }, 500);
     return () => window.clearInterval(id);

@@ -22,6 +22,7 @@ import { useSettings } from '../../app/state/settings';
 import { useReducedMotion } from '../../app/state/useReducedMotion';
 import { useTouchGestures } from './useTouchGestures';
 import { isEditableTarget } from '../../app/dom';
+import { markActive } from '../activity';
 
 const { ACTION } = CameraControlsImpl;
 const QUARTER = Math.PI / 2;
@@ -60,7 +61,8 @@ export function CameraRig() {
     c.touches.two = ACTION.NONE;
     c.touches.three = ACTION.NONE;
     c.mouseButtons.left = ACTION.NONE;
-    c.mouseButtons.middle = ACTION.TRUCK;
+    // SCREEN_PAN moves along the ground (camera-controls 3); TRUCK would pan in the screen plane.
+    c.mouseButtons.middle = mode === 'orbit' ? ACTION.SCREEN_PAN : ACTION.TRUCK;
     c.smoothTime = 0.25;
     c.draggingSmoothTime = 0.1;
     c.setBoundary(
@@ -76,7 +78,6 @@ export function CameraRig() {
       c.minDistance = 4;
       c.maxDistance = 80;
       c.dollyToCursor = true;
-      c.verticalDragToForward = true;
       c.mouseButtons.right = ACTION.ROTATE;
       c.mouseButtons.wheel = ACTION.DOLLY;
       void c.rotateTo(memory.azimuth, memory.polar, false);
@@ -86,7 +87,6 @@ export function CameraRig() {
       c.maxPolarAngle = 0;
       c.minZoom = fitZoom / 4;
       c.maxZoom = fitZoom * 8;
-      c.verticalDragToForward = false;
       c.mouseButtons.right = ACTION.NONE;
       c.mouseButtons.wheel = ACTION.ZOOM;
       void c.rotateTo(Math.round(memory.azimuth / QUARTER) * QUARTER, 0, false);
@@ -174,7 +174,7 @@ export function CameraRig() {
       const controls = controlsRef.current;
       if (event.code !== 'Space' || !controls || isEditableTarget(event.target)) return;
       event.preventDefault();
-      controls.mouseButtons.left = event.type === 'keydown' ? ACTION.TRUCK : ACTION.NONE;
+      controls.mouseButtons.left = event.type === 'keydown' ? ACTION.SCREEN_PAN : ACTION.NONE;
     };
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKey);
@@ -222,7 +222,15 @@ export function CameraRig() {
         far={500}
         position={[center.x, 60, center.z]}
       />
-      {camera && <CameraControls key={mode} ref={controlsRef} camera={camera} makeDefault />}
+      {camera && (
+        <CameraControls
+          key={mode}
+          ref={controlsRef}
+          camera={camera}
+          makeDefault
+          onUpdate={markActive}
+        />
+      )}
     </>
   );
 }

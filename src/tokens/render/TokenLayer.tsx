@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { createPortal, useFrame, useThree } from '@react-three/fiber';
 import type { RootState } from '@react-three/fiber';
 import {
   BufferAttribute,
@@ -29,7 +29,11 @@ import { useTokenDrag } from '../drag-state';
 import { getTokenImage } from '../images';
 import { createLabelMaterial, drawLabel, LABEL_SIZE, labelUniforms } from './labels';
 import { LayeredTexture } from './layered-texture';
-import { createTokenMaterial, tokenTime } from './token-material';
+import { createTokenDepthMaterial, createTokenMaterial, tokenTime } from './token-material';
+import { useSession } from '../../app/state/session';
+import { QUALITY_PRESETS } from '../../scene/core/quality';
+import { markActive } from '../../scene/activity';
+import { overlayScene } from '../../scene/overlay-scene';
 
 const CAPACITY = 128;
 const BASE_LIFT = 0.06;
@@ -117,6 +121,8 @@ export function TokenLayer() {
   const hpSetting = useSettings((s) => s.hpVisibility);
   const viewAsPlayer = useSettings((s) => s.viewAsPlayer);
   const reducedMotion = useReducedMotion();
+  // Medium/High: silhouette shadows from proxies; Low: soft blob decals (Visual.md §4.3).
+  const shadowMap = useSession((s) => QUALITY_PRESETS[s.preset].shadowMapSize > 0);
   const invalidate = useThree((s) => s.invalidate);
   const get = useThree((s) => s.get);
 
@@ -126,6 +132,8 @@ export function TokenLayer() {
     [],
   );
   const faceMaterial = useMemo(() => createTokenMaterial(images), [images]);
+  const depthMaterial = useMemo(() => createTokenDepthMaterial(images), [images]);
+  const proxyMaterial = useMemo(() => new MeshBasicMaterial({ colorWrite: false }), []);
   const labelMaterial = useMemo(() => createLabelMaterial(labels), [labels]);
   const blobMaterial = useMemo(
     () =>
@@ -149,6 +157,7 @@ export function TokenLayer() {
   const faceMesh = useRef<InstancedMesh>(null);
   const labelMesh = useRef<InstancedMesh>(null);
   const blobMesh = useRef<InstancedMesh>(null);
+  const proxyMesh = useRef<InstancedMesh>(null);
   const motion = useRef(new Map<string, Motion>());
   const layout = useRef<{ faces: string[]; bases: string[] }>({ faces: [], bases: [] });
   const labelSignature = useRef(new Map<string, string>());
@@ -157,12 +166,25 @@ export function TokenLayer() {
   useEffect(
     () => () => {
       [faces, labelGeometry, blobGeometry].forEach((g) => g.dispose());
-      [faceMaterial, labelMaterial, blobMaterial].forEach((m) => m.dispose());
+      [faceMaterial, labelMaterial, blobMaterial, depthMaterial, proxyMaterial].forEach((m) =>
+        m.dispose(),
+      );
       blobMaterial.alphaMap?.dispose();
       images.dispose();
       labels.dispose();
     },
-    [faces, labelGeometry, blobGeometry, faceMaterial, labelMaterial, blobMaterial, images, labels],
+    [
+      faces,
+      labelGeometry,
+      blobGeometry,
+      faceMaterial,
+      labelMaterial,
+      blobMaterial,
+      depthMaterial,
+      proxyMaterial,
+      images,
+      labels,
+    ],
   );
 
   // Rebuild per-instance data when tokens or viewing settings change.
@@ -270,6 +292,12 @@ export function TokenLayer() {
     if (faceMesh.current) faceMesh.current.count = list.length + bases.length;
     if (labelMesh.current) labelMesh.current.count = list.length;
     if (blobMesh.current) blobMesh.current.count = list.length;
+    if (proxyMesh.current && faceMesh.current) {
+      // Proxies share the face instances; they render only in the shadow pass (layer 1).
+      proxyMesh.current.instanceMatrix = faceMesh.current.instanceMatrix;
+      proxyMesh.current.count = faceMesh.current.count;
+      proxyMesh.current.layers.set(1);
+    }
     dirty.current = true;
     publish(list, motion.current, get);
     invalidate();
@@ -287,6 +315,7 @@ export function TokenLayer() {
     labels,
     invalidate,
     get,
+    shadowMap,
   ]);
 
   // Redraw labels once the web fonts have loaded (first draws may use a fallback font).
@@ -367,7 +396,9 @@ export function TokenLayer() {
       for (const mesh of [faceMesh.current, labelMesh.current, blobMesh.current]) {
         if (mesh) mesh.instanceMatrix.needsUpdate = true;
       }
+      state.gl.shadowMap.needsUpdate = true;
     }
+    if (moving || drag) markActive();
     if (moving) invalidate();
   });
 
@@ -378,18 +409,30 @@ export function TokenLayer() {
         args={[faces, faceMaterial, CAPACITY * 2]}
         frustumCulled={false}
       />
-      <instancedMesh
-        ref={blobMesh}
-        args={[blobGeometry, blobMaterial, CAPACITY]}
-        frustumCulled={false}
-        renderOrder={1}
-      />
-      <instancedMesh
-        ref={labelMesh}
-        args={[labelGeometry, labelMaterial, CAPACITY]}
-        frustumCulled={false}
-        renderOrder={10}
-      />
+      {shadowMap ? (
+        <instancedMesh
+          ref={proxyMesh}
+          args={[faces, proxyMaterial, CAPACITY * 2]}
+          customDepthMaterial={depthMaterial}
+          castShadow
+          frustumCulled={false}
+        />
+      ) : (
+        <instancedMesh
+          ref={blobMesh}
+          args={[blobGeometry, blobMaterial, CAPACITY]}
+          frustumCulled={false}
+          renderOrder={1}
+        />
+      )}
+      {createPortal(
+        <instancedMesh
+          ref={labelMesh}
+          args={[labelGeometry, labelMaterial, CAPACITY]}
+          frustumCulled={false}
+        />,
+        overlayScene,
+      )}
     </>
   );
 }
