@@ -1,0 +1,42 @@
+@import 'tailwindcss';
+
+/* Design tokens from Visual.md §6.2 and §6.4. */
+@theme {
+  --color-felt-900: #15222a;
+  --color-felt-800: #1f313b;
+  --color-felt-700: #2c4350;
+  --color-line: #5b6e79;
+  --color-pewter: #9fb0b9;
+  --color-bone: #eee8dc;
+  --color-lantern: #f4b23e;
+  --color-ember: #f2775a;
+  --color-moss: #4fc08d;
+  --color-ink: #0b1216;
+
+  --radius-rail: 16px;
+  --radius-panel: 12px;
+  --radius-button: 10px;
+  --radius-input: 8px;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-felt-900);
+  color: var(--color-bone);
+  font-family: system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:lang(th) {
+  line-height: 1.7;
+}

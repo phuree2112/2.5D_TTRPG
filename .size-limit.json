@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Main bundle (excluding three.js; Engineering.md §17)",
+    "path": "dist/assets/index-*.js",
+    "limit": "300 kB",
+    "gzip": true
+  },
+  {
+    "name": "Scene chunk (three.js + React Three Fiber, lazy-loaded)",
+    "path": "dist/assets/SceneCanvas-*.js",
+    "limit": "300 kB",
+    "gzip": true
+  }
+]
