@@ -93,7 +93,7 @@ Pinned majors (latest versions on 2026-10-17). Phase 1 pins exact versions in `p
 | `typescript` | 6.0.x | See D2 |
 | `three` | 0.186.x | `shadows="percentage"` for PCF on r182+ |
 | `@react-three/fiber` | 9.8.x | |
-| `@react-three/drei` | 10.7.x | `CameraControls`, `PerformanceMonitor` |
+| `@react-three/drei` | 10.7.x | `CameraControls` (camera-controls 3.1) |
 | `postprocessing` / `@react-three/postprocessing` | 6.39.x / 3.2.x | `TiltShiftEffect`, `LUT3DEffect`, `ToneMappingEffect` (AgX) |
 | `camera-controls` | 3.1.x | Via drei `CameraControls` |
 | `three-mesh-bvh` | 0.9.x | Editor picking on props only (lazy) |
@@ -127,7 +127,7 @@ flowchart LR
     diceCore["dice/core (parser, rng, remap math)"]
     levelsCore["levels/core (graph, distance, masks)"]
     editorCore["editor/commands"]
-    grid["scene/grid math"]
+    grid["scene/core math"]
   end
 
   subgraph RENDER["Render layer (R3F + three)"]
@@ -172,7 +172,7 @@ Enforced with ESLint `no-restricted-imports` (and `import/no-cycle`) from Phase 
 
 | Module | May import | Must not import | Owns |
 |---|---|---|---|
-| `combat`, `dice/core`, `levels/core`, `editor/commands`, `scene/grid` | each other, `data/schemas` (types only) | `react`, `three`, `data/*/adapters`, `ui` | Pure rules and math. 100 % unit-testable |
+| `combat`, `dice/core`, `levels/core`, `editor/commands`, `scene/core`, `ui/tool-rail/core` | each other, `data/schemas` (types only) | `react`, `three`, `data/*/adapters`, `ui` | Pure rules and math. 100 % unit-testable |
 | `data` | `zod`, `dexie`, `@supabase/supabase-js` (lazy) | `react`, `three`, `ui`, `scene` | Persistence, realtime transport, validation |
 | `state` (`src/app/state`) | `data` (interface only), domain | `three` | App state and the transient bus |
 | `scene`, `tokens`, `levels`, `dice` (render parts) | `three`, R3F, drei, domain, `state` | `data` adapters, Supabase | Everything drawn in WebGL |
@@ -396,7 +396,7 @@ The 512 cube map at Medium costs about 1.5 × the pixels of one 1 024² map, bec
 **Auto quality (Prompt §13):**
 
 1. Start preset: coarse pointer → Medium, fine pointer → High. A user override always wins and is remembered.
-2. drei `PerformanceMonitor` checks frame rate. `onDecline` steps down one preset, `onIncline` steps up, and after 3 flip-flops the preset stays fixed for the session.
+2. A governor (`scene/core/quality.ts`) checks frame rate during continuous rendering only: down under 48 FPS, up at 57 FPS or more, and after flip-flopping (up, down, up) the preset stays fixed for the session. *Revised 2026-10-18:* drei `PerformanceMonitor` was dropped because it divides frames by wall-clock time, which reads an idle demand-rendered scene as a very slow device.
 3. Changing preset first compiles the new shader variants with `renderer.compileAsync`, then swaps, so there is no hitch.
 
 ### 7.8 Resource lifecycle
@@ -413,7 +413,7 @@ The 512 cube map at Medium costs about 1.5 × the pixels of one 1 024² map, bec
 ### 8.1 Camera
 
 - drei `<CameraControls>` (camera-controls 3.x): `smoothTime` damping, `minPolarAngle` 25°, `maxPolarAngle` 75° (Settings can change both), unlimited azimuth, perspective FOV 30° (range 25–35°).
-- Built-in mouse and touch mappings are set to `NONE`. A custom **gesture layer** (§8.2) calls `rotate`, `truck`, `dolly` and `zoomTo`. This gives exactly the gesture set in Prompt §3, including two-finger twist, which camera-controls does not provide natively.
+- Touch mappings are set to `NONE` and a custom **gesture layer** (§8.2) calls `rotate`, `moveTo`, `dolly` and `zoomTo`, giving exactly the gesture set in Prompt §3, including two-finger twist, which camera-controls does not provide natively. *Revised 2026-10-18:* mouse uses camera-controls mappings (right = rotate, middle = pan, wheel = dolly; Space switches left-drag to pan). Every imperative move is followed by `invalidate()`, because an instant move fires no camera-controls event and would not redraw under demand rendering.
 - Q/E and the 45° snap call `rotate(±π/4, 0, true)`. Snapping rounds the azimuth to the nearest 45°.
 - Active level change: `moveTo(focus.x, level.elevation, focus.z, true)` animates the focus height.
 - **Top-down tactical view:** a separate `OrthographicCamera` made default while active. Polar is locked to 0, rotation snaps to 90° steps, and zoom maps to `camera.zoom`. Switching keeps the same focus point.

@@ -7,8 +7,9 @@
 | Phase | Status |
 |---|---|
 | 0: Skills and design documents | Done. Approved 2026-10-17 with all recommended defaults (below) |
-| 1: Scaffold | Code done and verified locally. Vercel deploy pending (needs the user's GitHub/Vercel accounts) |
-| 2: Scene, camera, grid, UI shell | Next |
+| 1: Scaffold | Done. Live on Vercel from https://github.com/phuree2112/2.5D_TTRPG (user confirmed 2026-10-18) |
+| 2: Scene, camera, grid, UI shell | Code done and verified in automated tests. Acceptance needs the user's real-phone check (smooth 360° rotation; rail switches sides and works by touch) |
+| 3: Tokens | Next |
 
 ## Commands
 
@@ -28,11 +29,11 @@ Do not start the next phase while `build`, `typecheck` or `test` fails (Prompt �
 
 ## Architecture in one screen
 
-- `src/app/`: shell, routing, providers, `state/` (zustand, from Phase 2).
-- `src/scene/`: R3F canvas (lazy chunk), camera, grid, terrain, environment, post-processing, quality, light pool. `diagnostics.ts` publishes `window.__DIORAMA_DIAGNOSTICS__` for tests.
+- `src/app/`: shell (`App.tsx`), `state/` (zustand: `settings.ts` persisted, `session.ts` per visit, `useRole`, `useReducedMotion`).
+- `src/scene/`: R3F canvas (lazy chunk). `core/` is pure math (grid, camera steps, gestures, quality presets and governor). `camera/` (CameraRig, touch gestures), `environment/` (demo table), `quality/` (governor component). `camera-actions.ts` is the three-free bridge the DOM UI uses to drive the camera. `diagnostics.ts` publishes `window.__DIORAMA_DIAGNOSTICS__` (counters, preset, camera) for tests and `?debug=1`.
 - `src/levels/`, `src/tokens/`, `src/editor/`, `src/dice/`, `src/combat/`: features. Pure logic lives in `core/`, `commands/`, `rules/` and must not import React, three.js, UI or storage.
 - `src/data/`: `DataAdapter`, zod schemas, `local/` (Dexie), `supabase/` (the only place Supabase may be imported), `policy/`. `backend-config.ts` picks Local Demo vs Supabase.
-- `src/ui/`: DOM UI, Tool Rail, panels. No direct three.js imports.
+- `src/ui/`: DOM UI, no direct three.js imports. `tool-rail/registry.ts` is the single tool list (rail, palette, help sheet and shortcuts all read it); `tool-rail/core/` is pure; the rail is compound components over the `rail-context.ts` contract. `panels/PanelHost.tsx` shows a flyout (desktop) or sheet (phone); only one panel is open at a time (`session.openPanel`).
 - Boundaries are enforced by `no-restricted-imports` in `eslint.config.js`.
 
 ## Decisions in force
@@ -59,12 +60,35 @@ From `Engineering.md` §1 plus the approved defaults:
 - Prettier ignores `*.md`: the design documents have wide tables and ASCII wireframes.
 - `.claude/skills` is a local junction to `skill/` and is git-ignored. Recreate it with the command in `README.md`.
 
+Phase 2:
+
+- **Auto quality uses our own governor, not drei `PerformanceMonitor`** [Δ Prompt §13]. PerformanceMonitor divides frames by wall-clock time, so an idle demand-rendered scene reads as ~1 FPS and would drop quality. `scene/core/quality.ts` only measures continuous rendering streaks (frames < 100 ms apart), steps down under 48 FPS, up at 57+, and locks after flip-flopping.
+- **Every imperative camera move calls `invalidate()`.** camera-controls fires no event for an instant (no-transition) move, so with Reduced Motion or touch gestures drei never redrew. Found by the Q/E e2e test.
+- Mouse uses camera-controls' own mappings (right = rotate, middle = pan, wheel = dolly, `verticalDragToForward`); Space toggles left-drag to pan. Touch is fully custom (`useTouchGestures`), because camera-controls has no two-finger twist.
+- Camera focus is clamped to the map with `setBoundary` (Y fixed at 0 until levels arrive).
+- Shadow map renders only on change (`shadowMap.autoUpdate = false`, `needsUpdate` from DemoTable). Antialiasing is fixed by the starting preset (context flag).
+- Shortcuts: tool keys in `registry.ts` (unique, tested); Q/E camera; `?` help; `,` settings; Ctrl/Cmd+K palette; all single-character keys can be turned off (WCAG 2.1.4).
+- Playwright runs 2 workers: SwiftShader is CPU-heavy and more workers timed out.
+- **Local screenshot reviews: launch Chromium with `--use-angle=d3d11`.** SwiftShader draws a false opaque block over the canvas next to the scrolling phone sheet; the real GPU does not.
+- The browser pane does not paint while the app window is hidden (no `requestAnimationFrame`), so use Playwright for visual checks.
+- Camera tilt range is a setting (default 25°–75°; sliders 10–45° and 50–85°), applied live by CameraRig.
+
+Open items carried from Phase 2:
+
+- Pinned tools reorder with Alt+↑/↓ only; drag-to-reorder (Prompt §14.1) is not built yet.
+- PageUp/PageDown, the level switcher and camera height per level wait for Phase 6 (the rail shows a placeholder "G" chip).
+- One-finger pan and two-finger tilt are covered by unit tests of the gesture math, not by e2e tests.
+- Thai UI text arrives with i18n in Phase 10; labels are English for now.
+
 ## Measurements
 
 | Date | What | Result |
 |---|---|---|
 | 2026-10-17 | Main bundle (gzip) | 69 kB (budget 300 kB) |
 | 2026-10-17 | Scene chunk: three.js + R3F (gzip) | 239 kB (budget 300 kB) |
+| 2026-10-18 | Main bundle after Phase 2 (gzip) | 87 kB |
+| 2026-10-18 | Scene chunk after Phase 2: + drei CameraControls (gzip) | 254 kB |
+| 2026-10-18 | Demo table, headless Chromium | 16–21 draw calls, ~200–260 triangles; idle = 0 frames |
 
 ## Working agreements
 

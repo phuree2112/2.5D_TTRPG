@@ -7,6 +7,8 @@ const chromiumWebGL = { launchOptions: { args: ['--enable-unsafe-swiftshader'] }
 export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,
+  // Software WebGL (SwiftShader) is CPU-heavy: more workers made page loads time out.
+  workers: 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',

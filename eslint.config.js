@@ -43,7 +43,8 @@ export default tseslint.config(
       'src/dice/core/**',
       'src/levels/core/**',
       'src/editor/commands/**',
-      'src/scene/grid/**',
+      'src/scene/core/**',
+      'src/ui/tool-rail/core/**',
     ],
     rules: {
       'no-restricted-imports': ['error', { patterns: [pureDomain, supabaseOnlyInAdapter] }],

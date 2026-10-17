@@ -1,0 +1,447 @@
+// The single tool registry (Engineering.md §15). The rail renders it, the command palette
+// searches it, the help sheet lists it and the shortcut handler binds from it.
+
+import {
+  BadgeAlert,
+  BrickWall,
+  ClipboardList,
+  CloudSun,
+  Crosshair,
+  Dices,
+  Eraser,
+  Eye,
+  Flame,
+  Footprints,
+  Gauge,
+  HeartPulse,
+  History,
+  ImagePlus,
+  Layers,
+  Library,
+  ListOrdered,
+  MapPin,
+  Mountain,
+  MousePointer2,
+  Move,
+  Paintbrush,
+  Pencil,
+  Ruler,
+  ScrollText,
+  Settings,
+  Shapes,
+  Share2,
+  TreePine,
+  Users,
+  Video,
+  Zap,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import type { Role, ToolInfo } from './core/tools';
+
+export type GroupId = 'play' | 'tokens' | 'dice' | 'combat' | 'build' | 'levels' | 'scene' | 'room';
+
+export type Shortcut = { key: string; shift?: boolean };
+
+export type ToolDef = ToolInfo & {
+  group: GroupId;
+  icon: LucideIcon;
+  shortcut: Shortcut;
+  /** One line shown in the flyout. */
+  summary: string;
+  /** Phase that builds this tool; absent = available now. */
+  arrivesIn?: number;
+};
+
+export const GROUPS: { id: GroupId; label: string; roles: 'all' | 'gm' }[] = [
+  { id: 'play', label: 'Play', roles: 'all' },
+  { id: 'tokens', label: 'Tokens', roles: 'all' },
+  { id: 'dice', label: 'Dice', roles: 'all' },
+  { id: 'combat', label: 'Combat', roles: 'all' },
+  { id: 'build', label: 'Build', roles: 'gm' },
+  { id: 'levels', label: 'Levels', roles: 'all' },
+  { id: 'scene', label: 'Scene', roles: 'all' },
+  { id: 'room', label: 'Room', roles: 'all' },
+];
+
+const tool = (def: ToolDef) => def;
+
+export const TOOLS: ToolDef[] = [
+  // Play
+  tool({
+    id: 'select',
+    group: 'play',
+    label: 'Select',
+    icon: MousePointer2,
+    shortcut: { key: 'v' },
+    roles: 'all',
+    summary: 'Pick tokens and objects on the table.',
+    keywords: ['pointer', 'cursor'],
+    arrivesIn: 3,
+  }),
+  tool({
+    id: 'move',
+    group: 'play',
+    label: 'Move',
+    icon: Move,
+    shortcut: { key: 'm' },
+    roles: 'all',
+    summary: 'Drag tokens; they snap to the grid.',
+    keywords: ['drag'],
+    arrivesIn: 3,
+  }),
+  tool({
+    id: 'measure',
+    group: 'play',
+    label: 'Measure',
+    icon: Ruler,
+    shortcut: { key: 'r' },
+    roles: 'all',
+    summary: 'Measure distance, including between levels.',
+    keywords: ['ruler', 'distance'],
+    arrivesIn: 3,
+  }),
+  tool({
+    id: 'templates',
+    group: 'play',
+    label: 'Area templates',
+    icon: Shapes,
+    shortcut: { key: 'a' },
+    roles: 'all',
+    summary: 'Circle, cone, line and square areas.',
+    keywords: ['aoe', 'cone', 'circle'],
+    arrivesIn: 3,
+  }),
+  tool({
+    id: 'ping',
+    group: 'play',
+    label: 'Ping',
+    icon: MapPin,
+    shortcut: { key: 'p' },
+    roles: 'all',
+    summary: 'Point at a spot for everyone.',
+    keywords: ['pointer', 'mark'],
+    arrivesIn: 9,
+  }),
+  tool({
+    id: 'draw',
+    group: 'play',
+    label: 'Draw',
+    icon: Pencil,
+    shortcut: { key: 'd' },
+    roles: 'all',
+    summary: 'Sketch notes that fade after a few seconds.',
+    keywords: ['annotate', 'sketch'],
+    arrivesIn: 9,
+  }),
+  tool({
+    id: 'target',
+    group: 'play',
+    label: 'Target',
+    icon: Crosshair,
+    shortcut: { key: 't' },
+    roles: 'all',
+    summary: 'Choose who your attack is aimed at.',
+    keywords: ['attack'],
+    arrivesIn: 8,
+  }),
+
+  // Tokens
+  tool({
+    id: 'token-library',
+    group: 'tokens',
+    label: 'Token library',
+    icon: Library,
+    shortcut: { key: 't', shift: true },
+    roles: 'all',
+    summary: 'Sample and uploaded tokens.',
+    keywords: ['assets', 'characters'],
+    arrivesIn: 3,
+  }),
+  tool({
+    id: 'import-token',
+    group: 'tokens',
+    label: 'Import token',
+    icon: ImagePlus,
+    shortcut: { key: 'i', shift: true },
+    roles: 'all',
+    summary: 'Upload an image and crop it into a token.',
+    keywords: ['upload', 'image'],
+    arrivesIn: 3,
+  }),
+  tool({
+    id: 'stats',
+    group: 'tokens',
+    label: 'Stats',
+    icon: ClipboardList,
+    shortcut: { key: 'i' },
+    roles: 'all',
+    summary: 'HP, AC and other values of the selected token.',
+    keywords: ['hp', 'sheet'],
+    arrivesIn: 8,
+  }),
+  tool({
+    id: 'conditions',
+    group: 'tokens',
+    label: 'Conditions',
+    icon: BadgeAlert,
+    shortcut: { key: 'c' },
+    roles: 'all',
+    summary: 'Prone, poisoned and other conditions.',
+    keywords: ['status', 'effects'],
+    arrivesIn: 8,
+  }),
+
+  // Dice
+  tool({
+    id: 'dice-tray',
+    group: 'dice',
+    label: 'Dice tray',
+    icon: Dices,
+    shortcut: { key: 'd', shift: true },
+    roles: 'all',
+    summary: 'Build a roll from dice and modifiers.',
+    keywords: ['roll'],
+    arrivesIn: 7,
+  }),
+  tool({
+    id: 'quick-d20',
+    group: 'dice',
+    label: 'Quick d20',
+    icon: Zap,
+    shortcut: { key: 'r', shift: true },
+    roles: 'all',
+    summary: 'Roll one d20 straight away.',
+    keywords: ['roll', 'd20'],
+    arrivesIn: 7,
+  }),
+  tool({
+    id: 'roll-log',
+    group: 'dice',
+    label: 'Roll log',
+    icon: ScrollText,
+    shortcut: { key: 'j' },
+    roles: 'all',
+    summary: 'Every roll in this room.',
+    keywords: ['history'],
+    arrivesIn: 7,
+  }),
+
+  // Combat
+  tool({
+    id: 'initiative',
+    group: 'combat',
+    label: 'Initiative',
+    icon: ListOrdered,
+    shortcut: { key: 'n' },
+    roles: 'all',
+    summary: 'Turn order for the encounter.',
+    keywords: ['turns', 'order'],
+    arrivesIn: 8,
+  }),
+  tool({
+    id: 'damage',
+    group: 'combat',
+    label: 'Damage & heal',
+    icon: HeartPulse,
+    shortcut: { key: 'h' },
+    roles: 'all',
+    summary: 'Apply damage or healing to targets.',
+    keywords: ['hp', 'heal'],
+    arrivesIn: 8,
+  }),
+  tool({
+    id: 'combat-log',
+    group: 'combat',
+    label: 'Combat log',
+    icon: History,
+    shortcut: { key: 'h', shift: true },
+    roles: 'all',
+    summary: 'Attacks and damage, with undo for the GM.',
+    keywords: ['undo', 'events'],
+    arrivesIn: 8,
+  }),
+
+  // Build (GM)
+  tool({
+    id: 'terrain',
+    group: 'build',
+    label: 'Terrain',
+    icon: Paintbrush,
+    shortcut: { key: '1' },
+    roles: 'gm',
+    summary: 'Paint grass, stone, water and more.',
+    keywords: ['paint', 'ground'],
+    arrivesIn: 5,
+  }),
+  tool({
+    id: 'height',
+    group: 'build',
+    label: 'Height',
+    icon: Mountain,
+    shortcut: { key: '2' },
+    roles: 'gm',
+    summary: 'Raise, lower and flatten the ground.',
+    keywords: ['elevation', 'cliff'],
+    arrivesIn: 5,
+  }),
+  tool({
+    id: 'props',
+    group: 'build',
+    label: 'Props',
+    icon: TreePine,
+    shortcut: { key: '3' },
+    roles: 'gm',
+    summary: 'Place trees, rocks, furniture and more.',
+    keywords: ['objects', 'scatter'],
+    arrivesIn: 5,
+  }),
+  tool({
+    id: 'walls',
+    group: 'build',
+    label: 'Walls',
+    icon: BrickWall,
+    shortcut: { key: '4' },
+    roles: 'gm',
+    summary: 'Walls, doors, windows and roofs.',
+    keywords: ['building', 'door'],
+    arrivesIn: 5,
+  }),
+  tool({
+    id: 'floors',
+    group: 'build',
+    label: 'Floors & stairs',
+    icon: Footprints,
+    shortcut: { key: '5' },
+    roles: 'gm',
+    summary: 'Floor slabs, openings and stairs between levels.',
+    keywords: ['stairs', 'ladder', 'slab'],
+    arrivesIn: 6,
+  }),
+  tool({
+    id: 'lights',
+    group: 'build',
+    label: 'Lights',
+    icon: Flame,
+    shortcut: { key: '6' },
+    roles: 'gm',
+    summary: 'Torches, campfires, lanterns and magic light.',
+    keywords: ['torch', 'lamp'],
+    arrivesIn: 5,
+  }),
+  tool({
+    id: 'erase',
+    group: 'build',
+    label: 'Erase',
+    icon: Eraser,
+    shortcut: { key: '7' },
+    roles: 'gm',
+    summary: 'Remove what you click.',
+    keywords: ['delete', 'remove'],
+    arrivesIn: 5,
+  }),
+
+  // Levels
+  tool({
+    id: 'levels',
+    group: 'levels',
+    label: 'Levels',
+    icon: Layers,
+    shortcut: { key: 'l', shift: true },
+    roles: 'all',
+    summary: 'Switch between floors of the map.',
+    keywords: ['floor', 'storey'],
+    arrivesIn: 6,
+  }),
+  tool({
+    id: 'view-mode',
+    group: 'levels',
+    label: 'View mode',
+    icon: Eye,
+    shortcut: { key: 'v', shift: true },
+    roles: 'all',
+    summary: 'All levels, cutaway or focus.',
+    keywords: ['cutaway', 'focus'],
+    arrivesIn: 6,
+  }),
+
+  // Scene
+  tool({
+    id: 'camera',
+    group: 'scene',
+    label: 'Camera',
+    icon: Video,
+    shortcut: { key: 'c', shift: true },
+    roles: 'all',
+    summary: 'Rotate, reset and switch to the top-down view.',
+    keywords: ['view', 'rotate', 'top-down', 'snap'],
+  }),
+  tool({
+    id: 'environment',
+    group: 'scene',
+    label: 'Environment',
+    icon: CloudSun,
+    shortcut: { key: 'e', shift: true },
+    roles: 'all',
+    summary: 'Time of day, weather and mood.',
+    keywords: ['weather', 'time', 'lighting'],
+    arrivesIn: 4,
+  }),
+  tool({
+    id: 'quality',
+    group: 'scene',
+    label: 'Quality',
+    icon: Gauge,
+    shortcut: { key: 'q', shift: true },
+    roles: 'all',
+    summary: 'Graphics quality for this device.',
+    keywords: ['performance', 'graphics', 'fps'],
+  }),
+
+  // Room
+  tool({
+    id: 'players',
+    group: 'room',
+    label: 'Players',
+    icon: Users,
+    shortcut: { key: 'p', shift: true },
+    roles: 'all',
+    summary: 'Who is at the table.',
+    keywords: ['members'],
+    arrivesIn: 9,
+  }),
+  tool({
+    id: 'share',
+    group: 'room',
+    label: 'Share link',
+    icon: Share2,
+    shortcut: { key: 's', shift: true },
+    roles: 'gm',
+    summary: 'Invite players with a link.',
+    keywords: ['invite'],
+    arrivesIn: 9,
+  }),
+  tool({
+    id: 'settings',
+    group: 'room',
+    label: 'Settings',
+    icon: Settings,
+    shortcut: { key: ',' },
+    roles: 'all',
+    summary: 'Rail side, shortcuts, motion and grid.',
+    keywords: ['options', 'preferences'],
+  }),
+];
+
+export const DEFAULT_PINS: Record<Role, string[]> = {
+  player: ['select', 'move', 'measure', 'dice-tray'],
+  gm: ['select', 'move', 'props', 'lights'],
+};
+
+export function findTool(id: string): ToolDef | undefined {
+  return TOOLS.find((t) => t.id === id);
+}
+
+export function shortcutLabel(shortcut: Shortcut): string {
+  const key = shortcut.key.length === 1 ? shortcut.key.toUpperCase() : shortcut.key;
+  return shortcut.shift ? `Shift+${key}` : key;
+}
