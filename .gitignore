@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+*.tsbuildinfo
+
+# tests
+coverage/
+test-results/
+playwright-report/
+blob-report/
+
+# env
+.env
+.env.*
+!.env.example
+
+# tooling
+.vercel/
+.DS_Store
+*.log
+
+# .claude/skills is a local junction to skill/ (recreate with the command in README)
+.claude/skills
