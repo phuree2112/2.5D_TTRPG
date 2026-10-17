@@ -6,6 +6,9 @@ import { useSession } from '../app/state/session';
 import { DemoTable } from './environment/DemoTable';
 import { CameraRig } from './camera/CameraRig';
 import { QualityGovernor } from './quality/QualityGovernor';
+import { TokenLayer } from '../tokens/render/TokenLayer';
+import { DragHighlight } from '../tokens/render/DragHighlight';
+import { TokenInteraction } from '../tokens/interaction/TokenInteraction';
 
 // Demand rendering from the start (Engineering.md §5.2).
 export default function SceneCanvas() {
@@ -31,6 +34,9 @@ export default function SceneCanvas() {
       <PauseWhenHidden />
       <QualityGovernor />
       <DemoTable />
+      <TokenLayer />
+      <DragHighlight />
+      <TokenInteraction />
       <CameraRig />
     </Canvas>
   );

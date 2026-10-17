@@ -13,11 +13,18 @@ import { CameraPanel } from './CameraPanel';
 import { ComingSoon } from './ComingSoon';
 import { QualityPanel } from './QualityPanel';
 import { SettingsPanel } from './SettingsPanel';
+import { SelectPanel } from './SelectPanel';
+import { TokenLibraryPanel } from './TokenLibraryPanel';
+import { ImportTokenPanel } from './ImportTokenPanel';
 
 const BUILT: Record<string, () => ReactNode> = {
   camera: () => <CameraPanel />,
   quality: () => <QualityPanel />,
   settings: () => <SettingsPanel />,
+  select: () => <SelectPanel tool="select" />,
+  move: () => <SelectPanel tool="move" />,
+  'token-library': () => <TokenLibraryPanel />,
+  'import-token': () => <ImportTokenPanel />,
 };
 
 /** Shows the open tool's options: a flyout beside the rail, or a sheet on phones. */

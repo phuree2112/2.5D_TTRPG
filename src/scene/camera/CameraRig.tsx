@@ -45,7 +45,8 @@ export function CameraRig() {
 
   const extent = gridExtent(grid);
   const center = new Vector3(extent.width / 2, 0, extent.depth / 2);
-  const defaultDistance = Math.min(Math.max(extent.width, extent.depth) * 1.6, 70);
+  // Close enough to read as a miniature diorama, not a map (Visual.md §2.3).
+  const defaultDistance = Math.min(Math.max(extent.width, extent.depth) * 0.9, 40);
   const fitZoom = Math.min(
     size.width / (extent.width + BOUNDARY_MARGIN * 2),
     size.height / (extent.depth + BOUNDARY_MARGIN * 2),
@@ -153,6 +154,12 @@ export function CameraRig() {
           if (mode === 'orbit') void c.dolly(direction * c.distance * 0.25, transition);
           else void c.zoomTo(c.camera.zoom * (direction > 0 ? 1.25 : 0.8), transition);
         }),
+      getView: () => {
+        const c = controlsRef.current;
+        if (!c) return { azimuth: memory.azimuth, target: { x: center.x, z: center.z } };
+        const t = c.getTarget(new Vector3(), true);
+        return { azimuth: c.azimuthAngle, target: { x: t.x, z: t.z } };
+      },
       tiltStep: (direction) =>
         act((c) => {
           if (mode === 'orbit')

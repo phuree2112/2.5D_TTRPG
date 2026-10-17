@@ -76,7 +76,6 @@ export const TOOLS: ToolDef[] = [
     roles: 'all',
     summary: 'Pick tokens and objects on the table.',
     keywords: ['pointer', 'cursor'],
-    arrivesIn: 3,
   }),
   tool({
     id: 'move',
@@ -87,7 +86,6 @@ export const TOOLS: ToolDef[] = [
     roles: 'all',
     summary: 'Drag tokens; they snap to the grid.',
     keywords: ['drag'],
-    arrivesIn: 3,
   }),
   tool({
     id: 'measure',
@@ -98,7 +96,7 @@ export const TOOLS: ToolDef[] = [
     roles: 'all',
     summary: 'Measure distance, including between levels.',
     keywords: ['ruler', 'distance'],
-    arrivesIn: 3,
+    arrivesIn: 6,
   }),
   tool({
     id: 'templates',
@@ -109,7 +107,7 @@ export const TOOLS: ToolDef[] = [
     roles: 'all',
     summary: 'Circle, cone, line and square areas.',
     keywords: ['aoe', 'cone', 'circle'],
-    arrivesIn: 3,
+    arrivesIn: 6,
   }),
   tool({
     id: 'ping',
@@ -155,7 +153,6 @@ export const TOOLS: ToolDef[] = [
     roles: 'all',
     summary: 'Sample and uploaded tokens.',
     keywords: ['assets', 'characters'],
-    arrivesIn: 3,
   }),
   tool({
     id: 'import-token',
@@ -166,7 +163,6 @@ export const TOOLS: ToolDef[] = [
     roles: 'all',
     summary: 'Upload an image and crop it into a token.',
     keywords: ['upload', 'image'],
-    arrivesIn: 3,
   }),
   tool({
     id: 'stats',

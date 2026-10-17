@@ -5,7 +5,11 @@ import type { Page } from '@playwright/test';
 export async function openTable(page: Page, query = '') {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto(`/${query}`);
-  await page.waitForFunction(() => window.__DIORAMA_DIAGNOSTICS__?.ready === true);
+  await page.waitForFunction(
+    () =>
+      window.__DIORAMA_DIAGNOSTICS__?.ready === true &&
+      (window.__DIORAMA_DIAGNOSTICS__.tokens?.length ?? 0) > 0,
+  );
 }
 
 export function camera(page: Page) {

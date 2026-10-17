@@ -7,3 +7,4 @@ skill
 package-lock.json
 # Design documents are formatted by hand (wide tables, ASCII wireframes)
 *.md
+.scratch

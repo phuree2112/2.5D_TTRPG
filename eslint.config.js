@@ -18,7 +18,17 @@ const supabaseOnlyInAdapter = {
 };
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'playwright-report', 'test-results', 'skill', '.claude'] },
+  {
+    ignores: [
+      'dist',
+      'coverage',
+      'playwright-report',
+      'test-results',
+      'skill',
+      '.claude',
+      '.scratch',
+    ],
+  },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
@@ -45,6 +55,7 @@ export default tseslint.config(
       'src/editor/commands/**',
       'src/scene/core/**',
       'src/ui/tool-rail/core/**',
+      'src/tokens/core/**',
     ],
     rules: {
       'no-restricted-imports': ['error', { patterns: [pureDomain, supabaseOnlyInAdapter] }],

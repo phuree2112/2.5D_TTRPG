@@ -18,6 +18,10 @@ export type DioramaDiagnostics = {
     zoom: number;
     target: [number, number, number];
   };
+  /** Tokens on the table, for e2e tests. */
+  tokens?: { id: string; name: string; col: number; row: number; mode: string }[];
+  /** Screen position (client px) of a token's centre. */
+  projectToken?: (id: string) => { x: number; y: number } | null;
 };
 
 declare global {

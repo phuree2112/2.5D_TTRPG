@@ -9,15 +9,15 @@ test.describe('desktop tool rail', () => {
 
   test('opens a tool flyout with its shortcut and closes it with Esc', async ({ page }) => {
     await openTable(page);
-    await page.keyboard.press('v');
-    const flyout = page.getByRole('dialog', { name: 'Select' });
+    await page.keyboard.press('3');
+    const flyout = page.getByRole('dialog', { name: 'Props' });
     await expect(flyout).toBeVisible();
-    await expect(flyout).toContainText('arrives in Phase 3');
+    await expect(flyout).toContainText('arrives in Phase 5');
 
     await page.keyboard.press('Escape');
     await expect(flyout).toBeHidden();
     await expect(
-      page.getByRole('toolbar', { name: 'Tools' }).getByRole('button', { name: 'Select' }),
+      page.getByRole('toolbar', { name: 'Tools' }).getByRole('button', { name: 'Props' }),
     ).toBeFocused();
   });
 

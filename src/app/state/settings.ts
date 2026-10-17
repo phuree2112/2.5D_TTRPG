@@ -7,6 +7,8 @@ import type { GridSpec } from '../../scene/core/grid';
 export type RailSide = 'left' | 'right';
 export type QualityMode = 'auto' | QualityPreset;
 export type MotionSetting = 'system' | 'reduced' | 'full';
+/** What players see of other creatures' HP (Prompt §4.3). */
+export type HpVisibility = 'numbers' | 'bar' | 'word' | 'hidden';
 
 type SettingsState = {
   railSide: RailSide;
@@ -22,6 +24,7 @@ type SettingsState = {
   grid: GridSpec;
   /** Camera tilt limits in degrees from straight down (Prompt §3: 25°–75°, adjustable). */
   tiltRange: { min: number; max: number };
+  hpVisibility: HpVisibility;
 };
 
 type SettingsActions = {
@@ -34,6 +37,7 @@ type SettingsActions = {
   setViewAsPlayer: (on: boolean) => void;
   setGridType: (type: GridSpec['type']) => void;
   setTiltRange: (range: { min: number; max: number }) => void;
+  setHpVisibility: (visibility: HpVisibility) => void;
 };
 
 export const useSettings = create<SettingsState & SettingsActions>()(
@@ -47,6 +51,7 @@ export const useSettings = create<SettingsState & SettingsActions>()(
       viewAsPlayer: false,
       grid: { type: 'square', width: 30, depth: 30 },
       tiltRange: { min: 25, max: 75 },
+      hpVisibility: 'bar',
 
       setRailSide: (railSide) => set({ railSide }),
       setQualityMode: (qualityMode) => set({ qualityMode }),
@@ -59,6 +64,7 @@ export const useSettings = create<SettingsState & SettingsActions>()(
       setViewAsPlayer: (viewAsPlayer) => set({ viewAsPlayer }),
       setGridType: (type) => set((s) => ({ grid: { ...s.grid, type } })),
       setTiltRange: (tiltRange) => set({ tiltRange }),
+      setHpVisibility: (hpVisibility) => set({ hpVisibility }),
     }),
     {
       name: 'dioramatable:settings',
@@ -73,6 +79,7 @@ export const useSettings = create<SettingsState & SettingsActions>()(
         viewAsPlayer: s.viewAsPlayer,
         grid: s.grid,
         tiltRange: s.tiltRange,
+        hpVisibility: s.hpVisibility,
       }),
     },
   ),

@@ -10,6 +10,7 @@ import { useShortcuts } from '../ui/shortcuts/useShortcuts';
 import { DesktopRail, MobileRail } from '../ui/tool-rail/ToolRail';
 import { ToolRailProvider } from '../ui/tool-rail/ToolRailContext';
 import { TopBar } from '../ui/TopBar';
+import { DragReadout } from '../ui/DragReadout';
 
 // three.js and R3F load in their own chunk, keeping the main bundle small (Engineering.md §17).
 const SceneCanvas = lazy(() => import('../scene/SceneCanvas'));
@@ -41,6 +42,7 @@ export function App() {
       <PanelHost layout={layout} />
       <CommandPalette />
       <HelpDialog />
+      <DragReadout />
       {debug && <DebugOverlay />}
     </main>
   );

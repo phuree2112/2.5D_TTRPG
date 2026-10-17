@@ -8,8 +8,9 @@
 |---|---|
 | 0: Skills and design documents | Done. Approved 2026-10-17 with all recommended defaults (below) |
 | 1: Scaffold | Done. Live on Vercel from https://github.com/phuree2112/2.5D_TTRPG (user confirmed 2026-10-18) |
-| 2: Scene, camera, grid, UI shell | Code done and verified in automated tests. Acceptance needs the user's real-phone check (smooth 360° rotation; rail switches sides and works by touch) |
-| 3: Tokens | Next |
+| 2: Scene, camera, grid, UI shell | Done in code and CI. The user's phone check is still open |
+| 3: Tokens | Done in code and tests (2026-10-18). Includes the user's HD-2D fix: tokens and nature are 2D pixel sprites that turn to face the camera |
+| 4: HD-2D lighting and moving background | In progress |
 
 ## Commands
 
@@ -72,6 +73,18 @@ Phase 2:
 - **Local screenshot reviews: launch Chromium with `--use-angle=d3d11`.** SwiftShader draws a false opaque block over the canvas next to the scrolling phone sheet; the real GPU does not.
 - The browser pane does not paint while the app window is hidden (no `requestAnimationFrame`), so use Playwright for visual checks.
 - Camera tilt range is a setting (default 25°–75°; sliders 10–45° and 50–85°), applied live by CameraRig.
+
+Phase 3:
+
+- **User direction (2026-10-18): "2.5D like Octopath Traveler — 2D sprites that turn around the camera view."** Characters, trees, bushes and the campfire are pixel sprites (cylindrical billboards, `scene/sprites`, `tokens/render`); ground, pillars and crates stay 3D with pixel textures.
+- All art is drawn in code (`scene/core/sprite-art.ts`, `tokens/core/sample-art.ts`), seeded so it is identical every load. The 8 sample tokens of Prompt §12 are pixel sprites.
+- Sprite and upright-token lighting normal is tilted ~72° up (not 25° as in Engineering.md §7.3), so sprites take nearly the same light as the ground and are not dark when the sun is behind them.
+- One instanced mesh draws all token faces and ring bases (`token-material.ts`: aMode 0 flat, 1 standee, 2 pop-out, 3 base). Token images live in a texture array (`LayeredTexture`, 256 px layers, grows by doubling).
+- Labels: Canvas 2D into a texture array, constant screen size, capped at ~2.4 cells wide when zoomed out. Exact HP numbers show only on the selected token so a full table stays readable.
+- Tokens claim pointers in the capture phase (`scene/pointer-ownership.ts`), so dragging a token never pans the camera.
+- Tokens live in memory (`app/state/tokens.ts`) and uploads in `tokens/images.ts` until the data layer (Phase 9).
+- Measure and Area templates moved to Phase 6 (they need cross-level measuring).
+- e2e helpers wait for `__DIORAMA_DIAGNOSTICS__.tokens`; `projectToken(id)` gives a token's screen point.
 
 Open items carried from Phase 2:
 

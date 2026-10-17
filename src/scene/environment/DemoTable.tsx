@@ -2,13 +2,18 @@ import { useEffect, useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Object3D } from 'three';
 import { cellCenter, gridExtent, gridLineSegments } from '../core/grid';
+import { grassTexture, rng, stoneTexture, woodTexture } from '../core/sprite-art';
+import type { SpriteKind } from '../core/sprite-art';
+import { SpriteBatch } from '../sprites/SpriteBatch';
+import type { SpriteItem } from '../sprites/SpriteBatch';
+import { createTileTexture } from '../sprites/textures';
 import type { GridSpec } from '../core/grid';
 import { QUALITY_PRESETS } from '../core/quality';
 import { useSettings } from '../../app/state/settings';
 import { useSession } from '../../app/state/session';
 
-// Placeholder diorama for Phase 2: a board on a table with a grid and a few landmarks, so
-// rotation and tilt are easy to judge. Terrain, props and real lighting arrive in Phases 4–5.
+// Demo diorama: a pixel-grass board on a table, with nature sprites, stone pillars and crates.
+// Terrain painting and props from the library arrive in Phase 5.
 
 const BOARD_THICKNESS = 0.4;
 const SUN_ELEVATION = (50 * Math.PI) / 180;
@@ -45,11 +50,12 @@ export function DemoTable() {
         <meshLambertMaterial color="#2a2420" />
       </mesh>
 
-      {/* Board */}
-      <mesh position={[cx, -BOARD_THICKNESS / 2, cz]} receiveShadow castShadow>
+      {/* Board: soil sides, pixel grass on top */}
+      <mesh position={[cx, -BOARD_THICKNESS / 2 - 0.001, cz]} receiveShadow castShadow>
         <boxGeometry args={[extent.width + 0.6, BOARD_THICKNESS, extent.depth + 0.6]} />
-        <meshLambertMaterial color="#56623f" />
+        <meshLambertMaterial color="#4a3a28" />
       </mesh>
+      <Grass width={extent.width + 0.6} depth={extent.depth + 0.6} x={cx} z={cz} />
 
       <GridLines grid={grid} />
       <Landmarks grid={grid} />
@@ -102,6 +108,21 @@ function Lights({
   );
 }
 
+function Grass({ width, depth, x, z }: { width: number; depth: number; x: number; z: number }) {
+  // The grass tile covers 4 × 4 cells (24 px per cell, matching the sprites).
+  const texture = useMemo(
+    () => createTileTexture(grassTexture(), width / 4, depth / 4),
+    [width, depth],
+  );
+  useEffect(() => () => texture.dispose(), [texture]);
+  return (
+    <mesh rotation-x={-Math.PI / 2} position={[x, 0, z]} receiveShadow>
+      <planeGeometry args={[width, depth]} />
+      <meshLambertMaterial map={texture} />
+    </mesh>
+  );
+}
+
 function GridLines({ grid }: { grid: GridSpec }) {
   const positions = useMemo(() => {
     const segments = gridLineSegments(grid);
@@ -119,12 +140,23 @@ function GridLines({ grid }: { grid: GridSpec }) {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <lineBasicMaterial color="#eee8dc" transparent opacity={0.22} depthWrite={false} />
+      <lineBasicMaterial color="#eee8dc" transparent opacity={0.13} depthWrite={false} />
     </lineSegments>
   );
 }
 
+// Nature and campfire as camera-facing pixel sprites; stone and wood stay 3D with pixel
+// textures. That mix is what reads as HD-2D (Visual.md §2.1).
 function Landmarks({ grid }: { grid: GridSpec }) {
+  const textures = useMemo(
+    () => ({
+      stone: createTileTexture(stoneTexture(), 1, 2),
+      wood: createTileTexture(woodTexture()),
+    }),
+    [],
+  );
+  useEffect(() => () => Object.values(textures).forEach((t) => t.dispose()), [textures]);
+
   const at = (col: number, row: number) => {
     const c = cellCenter(grid, { col, row });
     return [c.x, 0, c.z] as const;
@@ -132,48 +164,62 @@ function Landmarks({ grid }: { grid: GridSpec }) {
   const last = { col: grid.width - 2, row: grid.depth - 2 };
   const mid = { col: Math.floor(grid.width / 2), row: Math.floor(grid.depth / 2) };
   const corners = [at(1, 1), at(last.col, 1), at(1, last.row), at(last.col, last.row)];
+  const sprites = useMemo(() => natureSprites(grid), [grid]);
 
   return (
     <group>
       {corners.map(([x, , z], i) => (
         <mesh key={i} position={[x, 0.8, z]} castShadow receiveShadow>
           <boxGeometry args={[0.7, 1.6, 0.7]} />
-          <meshLambertMaterial color="#8a8f86" />
+          <meshLambertMaterial map={textures.stone} />
         </mesh>
       ))}
-
-      {/* Tree */}
-      <group position={at(mid.col - 4, mid.row - 3)}>
-        <mesh position={[0, 0.4, 0]} castShadow>
-          <cylinderGeometry args={[0.12, 0.16, 0.8, 6]} />
-          <meshLambertMaterial color="#8a5a36" />
-        </mesh>
-        <mesh position={[0, 1.3, 0]} castShadow>
-          <coneGeometry args={[0.7, 1.4, 7]} />
-          <meshLambertMaterial color="#4f7a3a" />
-        </mesh>
-      </group>
-
-      {/* Crates */}
       {[
-        [mid.col + 3, mid.row + 2],
-        [mid.col + 4, mid.row + 2],
-      ].map(([col, row]) => (
-        <mesh
-          key={`${col}-${row}`}
-          position={[at(col!, row!)[0], 0.3, at(col!, row!)[2]]}
-          castShadow
-        >
-          <boxGeometry args={[0.6, 0.6, 0.6]} />
-          <meshLambertMaterial color="#a0703f" />
-        </mesh>
-      ))}
-
-      {/* Campfire marker */}
-      <mesh position={[at(mid.col, mid.row)[0], 0.25, at(mid.col, mid.row)[2]]}>
-        <coneGeometry args={[0.25, 0.5, 6]} />
-        <meshLambertMaterial color="#ff9a3c" emissive="#ff7a2e" emissiveIntensity={1.5} />
-      </mesh>
+        [last.col - 4, last.row - 6],
+        [last.col - 3, last.row - 6],
+        [last.col - 4, last.row - 5],
+      ].map(([col, row]) => {
+        const [x, , z] = at(col!, row!);
+        return (
+          <mesh key={`${col}-${row}`} position={[x, 0.3, z]} castShadow receiveShadow>
+            <boxGeometry args={[0.6, 0.6, 0.6]} />
+            <meshLambertMaterial map={textures.wood} />
+          </mesh>
+        );
+      })}
+      <SpriteBatch items={[...sprites, { kind: 'campfire', ...xz(at(mid.col, mid.row)) }]} />
     </group>
   );
+}
+
+const xz = ([x, , z]: readonly [number, number, number]) => ({ x, z });
+
+/** Trees and bushes around the edge of the board, clear of the tokens in the middle. */
+function natureSprites(grid: GridSpec): SpriteItem[] {
+  const random = rng(42);
+  const items: SpriteItem[] = [];
+  const kinds: SpriteKind[] = ['pine', 'pine', 'oak', 'oak', 'autumn'];
+  for (let row = 0; row < grid.depth; row++) {
+    for (let col = 0; col < grid.width; col++) {
+      const edge = Math.min(col, row, grid.width - 1 - col, grid.depth - 1 - row);
+      const chance = edge === 0 ? 0.55 : edge === 1 ? 0.3 : edge === 2 ? 0.08 : 0;
+      if (random() >= chance) continue;
+      const c = cellCenter(grid, { col, row });
+      const jitter = () => (random() - 0.5) * 0.5;
+      const kind = random() < 0.25 ? 'bush' : kinds[Math.floor(random() * kinds.length)]!;
+      items.push({ kind, x: c.x + jitter(), z: c.z + jitter(), scale: 0.85 + random() * 0.35 });
+    }
+  }
+  // A grove of autumn trees and a few bushes inside the map for depth.
+  for (const [col, row] of [
+    [4, 22],
+    [5, 24],
+    [3, 25],
+    [26, 5],
+    [25, 7],
+  ] as const) {
+    const c = cellCenter(grid, { col, row });
+    items.push({ kind: row > 20 ? 'autumn' : 'pine', x: c.x, z: c.z, scale: 1.1 });
+  }
+  return items;
 }

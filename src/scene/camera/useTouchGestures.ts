@@ -6,6 +6,7 @@ import { Plane, Raycaster, Vector2, Vector3 } from 'three';
 import { classifyTwoFinger, twoFingerDelta } from '../core/gestures';
 import type { FingerPair, Point, TwoFingerMode } from '../core/gestures';
 import type { CameraMode } from '../../app/state/session';
+import { isPointerClaimed } from '../pointer-ownership';
 
 // Touch camera gestures (Prompt §3): one finger pans by "holding" the ground under it,
 // two-finger twist rotates, pinch zooms, two-finger vertical drag tilts. camera-controls'
@@ -46,7 +47,7 @@ export function useTouchGestures(
     };
 
     const onDown = (e: PointerEvent) => {
-      if (e.pointerType !== 'touch') return;
+      if (e.pointerType !== 'touch' || isPointerClaimed(e.pointerId)) return;
       try {
         element.setPointerCapture(e.pointerId);
       } catch {

@@ -23,3 +23,6 @@ blob-report/
 
 # .claude/skills is a local junction to skill/ (recreate with the command in README)
 .claude/skills
+
+# Local scratch scripts (screenshot reviews)
+.scratch/
